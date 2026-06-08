@@ -1,227 +1,144 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>CleanBot Color Action</title>
-
+<meta charset="utf-8">
+<title>Eco Robot Evolution</title>
 <style>
-body {
-  margin: 0;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
-  color: white;
-  transition: background 1s;
+body{margin:0;font-family:Segoe UI;background:#0f172a;color:white}
+.top{background:#111827;padding:15px;display:flex;justify-content:space-between}
+.container{display:flex;height:calc(100vh - 60px)}
+.world{
+flex:3;position:relative;overflow:hidden;
+background:linear-gradient(#555,#333);
+transition:1s;
 }
-
-/* 상단 UI */
-#ui {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  z-index: 10;
+.panel{flex:1;background:#1e293b;padding:15px}
+.bar{height:24px;background:#334155;border-radius:20px;overflow:hidden}
+.fill{height:100%;width:0%;background:#22c55e;transition:.5s}
+button{
+width:100%;padding:12px;margin-top:8px;border:none;
+border-radius:10px;background:#16a34a;color:white;font-weight:bold;cursor:pointer;
 }
-
-#world {
-  font-size: 18px;
-  margin-bottom: 4px;
-}
-
-#stats {
-  font-size: 14px;
-  color: #00ffd5;
-}
-
-/* 게임 필드 */
-#game {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-}
-
-/* 쓰레기 */
-.trash {
-  position: absolute;
-  font-size: 32px;
-  cursor: pointer;
-  animation: float 3.5s linear forwards;
-}
-
-@keyframes float {
-  from { transform: translateY(120px) scale(0.8); opacity: 1; }
-  to { transform: translateY(-220px) scale(1.3); opacity: 0; }
-}
-
-/* 팝업 */
-.pop {
-  position: absolute;
-  font-size: 18px;
-  color: #ff9800;
-  animation: pop 0.9s ease-out forwards;
-  pointer-events: none;
-}
-
-@keyframes pop {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: translateY(-50px) scale(1.5); }
-}
-
-/* 아이템 바 */
-#items {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 10px;
-  z-index: 10;
-}
-
-.item {
-  background: linear-gradient(135deg, #ff4081, #ff9800);
-  padding: 12px;
-  border-radius: 14px;
-  cursor: pointer;
-  font-size: 18px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-}
-
-.item.disabled {
-  opacity: 0.4;
-}
+.card{background:#334155;padding:10px;border-radius:10px;margin-top:10px}
+.trash{position:absolute;font-size:30px;cursor:pointer}
 </style>
 </head>
-
 <body>
 
-<div id="ui">
-  <div id="world">🌫️ 회색빛 쓰레기 마을</div>
-  <div id="stats">
-    🗑️ <span id="trash">0</span> |
-    ♻️ EP <span id="ep">0</span> |
-    🤖 자동 <span id="auto">2</span>/s
-  </div>
+<div class="top">
+<div>🤖 Eco Robot Evolution</div>
+<div>EP: <span id="ep">0</span> | Lv.<span id="lv">1</span></div>
 </div>
 
-<div id="game"></div>
+<div class="container">
+<div id="world" class="world"></div>
 
-<div id="items">
-  <div class="item" id="magnet" onclick="useMagnet()">🧲</div>
-  <div class="item" id="boost" onclick="useBoost()">⚡</div>
-  <div class="item" id="drone" onclick="useDrone()">🚁</div>
+<div class="panel">
+<h2>🌎 정화 진행도</h2>
+<div class="bar"><div id="fill" class="fill"></div></div>
+<p id="percent">0%</p>
+
+<div class="card">
+<h3>현재 상태</h3>
+<div id="stage">🗑 폐기물 투기장</div>
+</div>
+
+<button onclick="buySpeed()">⚡ 속도 업 (+1) 20EP</button>
+<button onclick="buyValue()">💰 효율 업 (+1) 30EP</button>
+
+<div class="card">
+속도: <span id="speed">1</span><br>
+효율: <span id="value">1</span>
+</div>
+</div>
 </div>
 
 <script>
-let trash = 0;
-let ep = 0;
-let auto = 2;
-let level = 1;
+let ep=0,speed=1,value=1,clean=0;
 
-let magnet = 0;
-let boost = 0;
-let drone = 0;
+const stages=[
+"🗑 폐기물 투기장",
+"🌫 오염된 공터",
+"🚮 쓰레기 수거 시작",
+"🌿 잡초가 자라기 시작",
+"🌳 작은 공원 조성",
+"🏡 깨끗한 주택가",
+"🌲 녹지 확장",
+"🌸 꽃이 피는 마을",
+"🦋 생태 복원 지역",
+"🌎 친환경 스마트 시티",
+"✨ 탄소중립 미래도시"
+];
 
-const game = document.getElementById("game");
+function update(){
+document.getElementById('ep').textContent=Math.floor(ep);
+document.getElementById('speed').textContent=speed;
+document.getElementById('value').textContent=value;
 
-function spawnTrash() {
-  const t = document.createElement("div");
-  t.className = "trash";
-  t.innerText = "🗑️";
-  t.style.left = Math.random() * (window.innerWidth - 40) + "px";
-  t.style.bottom = "-60px";
+let level=Math.min(10,Math.floor(clean/10)+1);
+document.getElementById('lv').textContent=level;
 
-  t.onclick = (e) => {
-    trash++;
-    dropItem();
-    pop("+1", e.clientX, e.clientY);
-    t.remove();
-    update();
-  };
+document.getElementById('fill').style.width=clean+'%';
+document.getElementById('percent').textContent=clean+'%';
 
-  game.appendChild(t);
-  setTimeout(() => t.remove(), 3500);
+let idx=Math.min(10,Math.floor(clean/10));
+document.getElementById('stage').textContent=stages[idx];
+
+const colors=[
+['#555','#333'],['#606060','#3c3c3c'],['#5f6b5f','#404040'],
+['#537253','#365236'],['#4f874f','#2e6b2e'],['#4ba14b','#2b702b'],
+['#3db53d','#267526'],['#2fc42f','#227422'],['#20d020','#1e6e1e'],
+['#12dc12','#176917'],['#0be40b','#116611']
+];
+
+document.getElementById('world').style.background=
+`linear-gradient(${colors[idx][0]},${colors[idx][1]})`;
+
+localStorage.setItem("ecoSave",JSON.stringify({ep,speed,value,clean}));
 }
 
-function pop(text, x, y) {
-  const p = document.createElement("div");
-  p.className = "pop";
-  p.innerText = text;
-  p.style.left = x + "px";
-  p.style.top = y + "px";
-  game.appendChild(p);
-  setTimeout(() => p.remove(), 900);
+function spawn(){
+const t=document.createElement('div');
+const arr=['🧴','🥫','📄'];
+t.className='trash';
+t.textContent=arr[Math.floor(Math.random()*arr.length)];
+t.style.left=Math.random()*95+'%';
+t.style.top=Math.random()*90+'%';
+
+t.onclick=()=>{
+ep+=value;
+clean=Math.min(100,clean+1);
+t.remove();
+update();
+};
+
+world.appendChild(t);
+setTimeout(()=>{if(t.parentNode)t.remove();},12000);
 }
 
-function autoCollect() {
-  trash += auto + magnet;
-  update();
+function buySpeed(){
+if(ep>=20){ep-=20;speed++;update();}
+else alert("EP가 부족합니다!");
+}
+function buyValue(){
+if(ep>=30){ep-=30;value++;update();}
+else alert("EP가 부족합니다!");
 }
 
-function dropItem() {
-  const r = Math.random();
-  if (r < 0.05) magnet++;
-  else if (r < 0.08) boost++;
-  else if (r < 0.1) drone++;
-  updateItems();
+setInterval(spawn,900);
+
+setInterval(()=>{
+ep+=speed;
+clean=Math.min(100,clean+0.2);
+update();
+},3000);
+
+const save=localStorage.getItem("ecoSave");
+if(save){
+const d=JSON.parse(save);
+ep=d.ep;speed=d.speed;value=d.value;clean=d.clean;
 }
-
-function useMagnet() {
-  if (magnet <= 0) return;
-  magnet--;
-  auto += 2;
-  setTimeout(() => auto -= 2, 5000);
-  updateItems();
-}
-
-function useBoost() {
-  if (boost <= 0) return;
-  boost--;
-  for (let i = 0; i < 10; i++) spawnTrash();
-  updateItems();
-}
-
-function useDrone() {
-  if (drone <= 0) return;
-  drone--;
-  ep += 10;
-  updateItems();
-  update();
-}
-
-function update() {
-  document.getElementById("trash").innerText = trash;
-  document.getElementById("ep").innerText = ep;
-  document.getElementById("auto").innerText = auto;
-
-  const newLevel = Math.floor(ep / 15) + 1;
-  if (newLevel !== level) {
-    level = newLevel;
-    updateWorld();
-  }
-}
-
-function updateItems() {
-  document.getElementById("magnet").classList.toggle("disabled", magnet <= 0);
-  document.getElementById("boost").classList.toggle("disabled", boost <= 0);
-  document.getElementById("drone").classList.toggle("disabled", drone <= 0);
-}
-
-function updateWorld() {
-  if (level < 2) document.body.style.background = "#444";
-  else if (level < 4) document.body.style.background = "#2f5f6f";
-  else if (level < 6) document.body.style.background = "#2a7fb8";
-  else document.body.style.background = "#1e88e5";
-
-  const w = document.getElementById("world");
-  if (level < 2) w.innerText = "🌫️ 회색빛 쓰레기 마을";
-  else if (level < 4) w.innerText = "🌱 정화 중인 마을";
-  else w.innerText = "🌳 푸른 친환경 마을";
-}
-
-setInterval(spawnTrash, 700);
-setInterval(autoCollect, 1000);
+update();
 </script>
-
 </body>
 </html>
